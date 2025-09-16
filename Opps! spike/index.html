@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oops! All Spikes</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            user-select: none;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            transition: transform 0.5s ease;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, #8B3A3A 0%, #A0522D 50%, #CD853F 100%);
+            display: block;
+            border: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            color: white;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        #rageBar {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            width: 200px;
+            height: 20px;
+            background: #333;
+            border: 2px solid #fff;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        #rageFill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffff00, #ff6600, #ff0000);
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(255,0,0,0.5);
+        }
+
+        #trollButtons {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .trollBtn {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .trollBtn:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            font-size: 14px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .shake {
+            animation: shake 0.5s ease-in-out infinite;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .flip {
+            transform: scaleY(-1);
+        }
+
+        #deathCounter {
+            position: absolute;
+            top: 90px;
+            left: 20px;
+            color: #ff4444;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="ui">
+            Level: <span id="level">1</span> | Time: <span id="time">0</span>s
+        </div>
+        
+        <div id="rageBar">
+            <div id="rageFill"></div>
+        </div>
+        
+        <div id="deathCounter">
+            Deaths: <span id="deaths">0</span> 💀
+        </div>
+        
+        <div id="trollButtons">
+            <button class="trollBtn" onclick="skipLevel()">Skip Level 🎯</button>
+            <button class="trollBtn" onclick="getHint()">Get Hint 💡</button>
+        </div>
+        
+        <div id="instructions">
+            Arrow Keys: Move | Space: Jump | M: Level Map<br>
+            Trust nothing. Everything lies. Good luck! 😈
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameContainer = document.getElementById('gameContainer');
+
+        // Set canvas to full screen
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        
+        // Initial resize and add event listener for window resize
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Game state
+        let game = {
+            player: { x: 50, y: 500, width: 16, height: 36, vx: 0, vy: 0, grounded: false, size: 1 },
+            platforms: [],
+            spikes: [],
+            goal: { x: 700, y: 500, width: 30, height: 50, moved: false },
+            keys: {},
+            gravity: 0.5,
+            jumpPower: -12,
+            speed: 3,
+            level: 1,
+            deaths: 0,
+            rage: 0,
+            time: 0,
+            controlsReversed: false,
+            gravityFlipped: false,
+            cameraShake: false,
+            gameStarted: false,
+            showMap: false,
+            completedLevels: new Set(), // Track completed levels
+            levelSeeds: {} // Store seeds for consistent level generation
+        };
+
+        // Generate 100 progressively harder levels with consistent seeds
+        function generateLevel(levelNum) {
+            // Use consistent seed for each level so they don't change
+            if (!game.levelSeeds[levelNum]) {
+                game.levelSeeds[levelNum] = levelNum * 12345; // Fixed seed per level
+            }
+            
+            // Simple seeded random function
+            let seed = game.levelSeeds[levelNum];
+            function seededRandom() {
+                seed = (seed * 9301 + 49297) % 233280;
+                return seed / 233280;
+            }
+            
+            const difficulty = Math.floor(levelNum / 10) + 1;
+            const platforms = [{x: 0, y: 580, width: 800, height: 20, fake: false}]; // Ground
+            const spikes = [];
+            
+            // Add 2-4 platforms per level (shorter levels)
+            const platformCount = Math.min(2 + Math.floor(levelNum / 20), 4);
+            
+            for (let i = 0; i < platformCount; i++) {
+                const x = 100 + (i * 150) + seededRandom() * 50;
+                const y = 500 - (i * 80) - seededRandom() * 50;
+                const isFake = seededRandom() < 0.2 + (difficulty * 0.05);
+                
+                platforms.push({
+                    x: x,
+                    y: y,
+                    width: 80 + seededRandom() * 40,
+                    height: 20,
+                    fake: isFake
+                });
+                
+                // Add spikes near platforms
+                if (seededRandom() < 0.6) {
+                    spikes.push({
+                        x: x + seededRandom() * 60,
+                        y: y - 20,
+                        width: 15,
+                        height: 15,
+                        hidden: seededRandom() < 0.4,
+                        triggered: false
+                    });
+                }
+            }
+            
+            // Add random ground spikes
+            const groundSpikes = Math.min(2 + Math.floor(difficulty / 2), 6);
+            for (let i = 0; i < groundSpikes; i++) {
+                spikes.push({
+                    x: 100 + seededRandom() * 600,
+                    y: 560,
+                    width: 15,
+                    height: 15,
+                    hidden: seededRandom() < 0.3,
+                    triggered: false
+                });
+            }
+            
+            return { platforms, spikes };
+        }
+
+        function initLevel() {
+            const levelData = generateLevel(game.level);
+            game.platforms = JSON.parse(JSON.stringify(levelData.platforms));
+            game.spikes = JSON.parse(JSON.stringify(levelData.spikes));
+            
+            // Scale platforms and spikes to screen size
+            const scaleX = canvas.width / 800;
+            const scaleY = canvas.height / 600;
+            
+            game.platforms.forEach(platform => {
+                platform.x *= scaleX;
+                platform.y *= scaleY;
+                platform.width *= scaleX;
+                platform.height *= scaleY;
+            });
+            
+            game.spikes.forEach(spike => {
+                spike.x *= scaleX;
+                spike.y *= scaleY;
+                spike.width *= scaleX;
+                spike.height *= scaleY;
+            });
+            
+            // Randomize some trap positions
+            game.spikes.forEach(spike => {
+                if (Math.random() < 0.3) {
+                    spike.x += (Math.random() - 0.5) * 50 * scaleX;
+                }
+            });
+            
+            game.player = { 
+                x: 30 * scaleX, 
+                y: 500 * scaleY, 
+                width: 16 * scaleX, 
+                height: 36 * scaleY, 
+                vx: 0, 
+                vy: 0, 
+                grounded: false, 
+                size: 1 
+            };
+            
+            // Goal position varies by level
+            const goalX = (650 + Math.random() * 100) * scaleX;
+            const goalY = (450 + Math.random() * 100) * scaleY;
+            game.goal = { 
+                x: goalX, 
+                y: goalY, 
+                width: 30 * scaleX, 
+                height: 50 * scaleY, 
+                moved: false 
+            };
+            
+            game.controlsReversed = false;
+            game.gravityFlipped = false;
+        }
+
+        function update() {
+            if (!game.gameStarted) return;
+            
+            // Handle map toggle
+            if (game.keys['m'] || game.keys['M']) {
+                game.showMap = !game.showMap;
+                game.keys['m'] = false;
+                game.keys['M'] = false;
+                return;
+            }
+            
+            if (game.showMap) return; // Don't update game when map is shown
+
+            // Apply gravity
+            const gravityDirection = game.gravityFlipped ? -1 : 1;
+            game.player.vy += game.gravity * gravityDirection;
+
+            // Handle input
+            let moveX = 0;
+            if (game.keys['ArrowLeft']) moveX = -game.speed;
+            if (game.keys['ArrowRight']) moveX = game.speed;
+            
+            // Reverse controls troll
+            if (game.controlsReversed) moveX *= -1;
+            
+            game.player.vx = moveX;
+
+            // Jump
+            if (game.keys[' '] && game.player.grounded) {
+                game.player.vy = game.jumpPower * gravityDirection;
+                game.player.grounded = false;
+                
+                // Camera shake when jumping (troll)
+                if (Math.random() < 0.3) {
+                    canvas.classList.add('shake');
+                    setTimeout(() => canvas.classList.remove('shake'), 500);
+                }
+            }
+
+            // Update position
+            game.player.x += game.player.vx;
+            game.player.y += game.player.vy;
+
+            // Platform collision
+            game.player.grounded = false;
+            game.platforms.forEach(platform => {
+                if (!platform.fake && 
+                    game.player.x < platform.x + platform.width &&
+                    game.player.x + game.player.width > platform.x &&
+                    game.player.y < platform.y + platform.height &&
+                    game.player.y + game.player.height > platform.y) {
+                    
+                    if (game.player.vy > 0 && !game.gravityFlipped) {
+                        game.player.y = platform.y - game.player.height;
+                        game.player.vy = 0;
+                        game.player.grounded = true;
+                    } else if (game.player.vy < 0 && game.gravityFlipped) {
+                        game.player.y = platform.y + platform.height;
+                        game.player.vy = 0;
+                        game.player.grounded = true;
+                    }
+                }
+                
+                // Fake platform disappears when stepped on
+                if (platform.fake && 
+                    game.player.x < platform.x + platform.width &&
+                    game.player.x + game.player.width > platform.x &&
+                    Math.abs(game.player.y - platform.y) < 30) {
+                    platform.width = 0; // Make it disappear
+                }
+            });
+
+            // Spike collision and hidden spike triggering
+            game.spikes.forEach(spike => {
+                // Trigger hidden spikes when player gets close
+                if (spike.hidden && !spike.triggered &&
+                    Math.abs(game.player.x - spike.x) < 40 &&
+                    Math.abs(game.player.y - spike.y) < 40) {
+                    spike.triggered = true;
+                    spike.hidden = false;
+                }
+                
+                // Check collision
+                if (!spike.hidden &&
+                    game.player.x < spike.x + spike.width &&
+                    game.player.x + game.player.width > spike.x &&
+                    game.player.y < spike.y + spike.height &&
+                    game.player.y + game.player.height > spike.y) {
+                    die();
+                }
+            });
+
+            // Goal collision (but it might move!)
+            if (game.player.x < game.goal.x + game.goal.width &&
+                game.player.x + game.player.width > game.goal.x &&
+                game.player.y < game.goal.y + game.goal.height &&
+                game.player.y + game.player.height > game.goal.y) {
+                
+                if (!game.goal.moved && Math.random() < 0.7) {
+                    // Troll! Move the goal
+                    game.goal.x = Math.random() * (canvas.width - game.goal.width);
+                    game.goal.y = Math.random() * (canvas.height - 100) + 50;
+                    game.goal.moved = true;
+                } else {
+                    // Actually win
+                    nextLevel();
+                }
+            }
+
+            // Boundary check
+            if (game.player.y > canvas.height || game.player.y < -game.player.height) {
+                die();
+            }
+
+            // Random troll events
+            if (Math.random() < 0.002) { // 0.2% chance per frame
+                activateRandomTroll();
+            }
+
+            // Update time
+            game.time += 1/60;
+        }
+
+        function die() {
+            game.deaths++;
+            game.rage = Math.min(100, game.rage + 20);
+            
+            // More trolls as rage increases
+            if (game.rage > 60) {
+                activateRandomTroll();
+            }
+            
+            updateUI();
+            initLevel();
+        }
+
+        function activateRandomTroll() {
+            const trolls = [
+                () => { game.controlsReversed = !game.controlsReversed; },
+                () => { 
+                    game.gravityFlipped = !game.gravityFlipped;
+                    gameContainer.classList.toggle('flip');
+                },
+                () => { game.player.size = 0.5; }, // Shrink player
+                () => { canvas.style.transform = 'scale(0.7)'; }, // Zoom out
+                () => { canvas.style.filter = 'hue-rotate(180deg)'; } // Color chaos
+            ];
+            
+            const randomTroll = trolls[Math.floor(Math.random() * trolls.length)];
+            randomTroll();
+            
+            // Reset some effects after a while
+            setTimeout(() => {
+                canvas.style.transform = 'scale(1)';
+                canvas.style.filter = 'none';
+                game.player.size = 1;
+            }, 3000);
+        }
+
+        function render() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (game.showMap) {
+                drawLevelMap();
+                return;
+            }
+
+            // Draw cave background elements
+            ctx.fillStyle = '#8B3A3A';
+            // Top cave ceiling with stalactites
+            for (let i = 0; i < canvas.width; i += 30) {
+                const height = 20 + Math.sin(i * 0.05) * 10;
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i + 15, height);
+                ctx.lineTo(i + 30, 0);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // Draw platforms with cave rock style
+            game.platforms.forEach(platform => {
+                if (platform.width > 0) {
+                    // Main platform - rocky cave floor
+                    ctx.fillStyle = platform.fake ? '#654321' : '#8B4513';
+                    ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    
+                    // Rocky texture on top
+                    ctx.fillStyle = '#A0522D';
+                    for (let i = 0; i < platform.width; i += 8) {
+                        const rockHeight = 3 + Math.random() * 4;
+                        ctx.fillRect(platform.x + i, platform.y - rockHeight, 6, rockHeight);
+                    }
+                    
+                    // Platform edge
+                    ctx.fillStyle = platform.fake ? '#8B0000' : '#D2691E';
+                    ctx.fillRect(platform.x, platform.y, platform.width, 2);
+                }
+            });
+
+            // Draw spikes with cave style
+            game.spikes.forEach(spike => {
+                if (!spike.hidden) {
+                    // Main spike body - dark red/brown
+                    ctx.fillStyle = '#8B0000';
+                    ctx.beginPath();
+                    ctx.moveTo(spike.x, spike.y + spike.height);
+                    ctx.lineTo(spike.x + spike.width/2, spike.y);
+                    ctx.lineTo(spike.x + spike.width, spike.y + spike.height);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Spike highlight
+                    ctx.fillStyle = '#CD5C5C';
+                    ctx.beginPath();
+                    ctx.moveTo(spike.x + 2, spike.y + spike.height);
+                    ctx.lineTo(spike.x + spike.width/2, spike.y + 2);
+                    ctx.lineTo(spike.x + spike.width/2 + 1, spike.y + 2);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            });
+
+            // Draw player (slim and tall black silhouette with visible limbs)
+            const playerSize = game.player.width * game.player.size;
+            const playerHeight = game.player.height * game.player.size;
+            
+            ctx.fillStyle = '#000000';
+            
+            // Main body (slim rectangular torso)
+            ctx.fillRect(
+                game.player.x + (game.player.width - playerSize) / 2,
+                game.player.y + (game.player.height - playerHeight) / 2 + playerHeight * 0.28,
+                playerSize,
+                playerHeight * 0.45
+            );
+            
+            // Head (slim square/rectangular)
+            ctx.fillRect(
+                game.player.x + (game.player.width - playerSize) / 2,
+                game.player.y + (game.player.height - playerHeight) / 2,
+                playerSize,
+                playerHeight * 0.3
+            );
+            
+            // Left arm (thinner)
+            ctx.fillRect(
+                game.player.x + (game.player.width - playerSize) / 2 - 3,
+                game.player.y + (game.player.height - playerHeight) / 2 + playerHeight * 0.3,
+                3,
+                playerHeight * 0.4
+            );
+            
+            // Right arm (thinner)
+            ctx.fillRect(
+                game.player.x + (game.player.width - playerSize) / 2 + playerSize,
+                game.player.y + (game.player.height - playerHeight) / 2 + playerHeight * 0.3,
+                3,
+                playerHeight * 0.4
+            );
+            
+            // Left leg (thinner and longer)
+            ctx.fillRect(
+                game.player.x + (game.player.width - playerSize) / 2 + 2,
+                game.player.y + (game.player.height - playerHeight) / 2 + playerHeight * 0.73,
+                4,
+                playerHeight * 0.27
+            );
+            
+            // Right leg (thinner and longer)
+            ctx.fillRect(
+                game.player.x + (game.player.width - playerSize) / 2 + playerSize - 6,
+                game.player.y + (game.player.height - playerHeight) / 2 + playerHeight * 0.73,
+                4,
+                playerHeight * 0.27
+            );
+            
+            // Small white eyes for visibility
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(game.player.x + 4, game.player.y + 6, 2, 2);
+            ctx.fillRect(game.player.x + 10, game.player.y + 6, 2, 2);
+
+            // Draw goal (exit door/portal)
+            ctx.fillStyle = '#FFD700';
+            ctx.fillRect(game.goal.x, game.goal.y, game.goal.width, game.goal.height);
+            ctx.fillStyle = '#FFA500';
+            ctx.fillRect(game.goal.x + 5, game.goal.y + 5, game.goal.width - 10, game.goal.height - 10);
+            ctx.fillStyle = '#000';
+            ctx.font = '20px Arial';
+            ctx.fillText('🚪', game.goal.x + 5, game.goal.y + 30);
+
+            // Troll indicators
+            if (game.controlsReversed) {
+                ctx.fillStyle = 'rgba(255,0,0,0.3)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#fff';
+                ctx.font = '24px Arial';
+                ctx.fillText('CONTROLS REVERSED!', canvas.width/2 - 100, 50);
+            }
+
+            if (game.gravityFlipped) {
+                ctx.fillStyle = '#fff';
+                ctx.font = '24px Arial';
+                ctx.fillText('GRAVITY FLIPPED!', canvas.width/2 - 80, canvas.height - 30);
+            }
+        }
+        
+        function drawLevelMap() {
+            // Dark background for map
+            ctx.fillStyle = 'rgba(0,0,0,0.9)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Title
+            ctx.fillStyle = '#FFD700';
+            ctx.font = 'bold 24px Arial';
+            ctx.fillText('LEVEL MAP - 100 LEVELS OF CHAOS', canvas.width/2 - 200, 40);
+            
+            // Progress info
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '16px Arial';
+            ctx.fillText(`Current Level: ${game.level} | Completed: ${game.completedLevels.size}/100 | Deaths: ${game.deaths}`, 50, 70);
+            
+            // Draw level grid (10x10 grid for 100 levels)
+            const startX = 50;
+            const startY = 100;
+            const boxSize = 30;
+            const spacing = 35;
+            
+            for (let row = 0; row < 10; row++) {
+                for (let col = 0; col < 10; col++) {
+                    const levelNum = row * 10 + col + 1;
+                    const x = startX + col * spacing;
+                    const y = startY + row * spacing;
+                    
+                    // Determine box color
+                    let boxColor = '#444444'; // Not reached
+                    if (game.completedLevels.has(levelNum)) {
+                        boxColor = '#00FF00'; // Completed (green)
+                    } else if (levelNum === game.level) {
+                        boxColor = '#FFD700'; // Current level (gold)
+                    } else if (levelNum < game.level) {
+                        boxColor = '#FF4444'; // Failed/skipped (red)
+                    }
+                    
+                    // Draw level box
+                    ctx.fillStyle = boxColor;
+                    ctx.fillRect(x, y, boxSize, boxSize);
+                    
+                    // Draw level number
+                    ctx.fillStyle = levelNum === game.level ? '#000' : '#FFF';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(levelNum.toString(), x + boxSize/2, y + boxSize/2 + 4);
+                }
+            }
+            
+            // Legend
+            ctx.textAlign = 'left';
+            ctx.font = '14px Arial';
+            ctx.fillStyle = '#00FF00';
+            ctx.fillRect(500, 450, 20, 20);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText('Completed', 530, 465);
+            
+            ctx.fillStyle = '#FFD700';
+            ctx.fillRect(500, 480, 20, 20);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText('Current Level', 530, 495);
+            
+            ctx.fillStyle = '#FF4444';
+            ctx.fillRect(500, 510, 20, 20);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText('Failed/Not Completed', 530, 525);
+            
+            ctx.fillStyle = '#444444';
+            ctx.fillRect(500, 540, 20, 20);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText('Not Reached', 530, 555);
+            
+            // Instructions
+            ctx.fillStyle = '#FFFF00';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText('Press M to close map and continue playing', canvas.width/2 - 150, canvas.height - 20);
+        }
+
+            // Draw spikes with cave style
+            game.spikes.forEach(spike => {
+                if (!spike.hidden) {
+                    // Main spike body - dark red/brown
+                    ctx.fillStyle = '#8B0000';
+                    ctx.beginPath();
+                    ctx.moveTo(spike.x, spike.y + spike.height);
+                    ctx.lineTo(spike.x + spike.width/2, spike.y);
+                    ctx.lineTo(spike.x + spike.width, spike.y + spike.height);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Spike highlight
+                    ctx.fillStyle = '#CD5C5C';
+                    ctx.beginPath();
+                    ctx.moveTo(spike.x + 2, spike.y + spike.height);
+                    ctx.lineTo(spike.x + spike.width/2, spike.y + 2);
+                    ctx.lineTo(spike.x + spike.width/2 + 1, spike.y + 2);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            });
+
+            // Draw player (slim and tall black silhouette with visible limbs)
+            const playerSize = game.player.width * game.player.size;
+            const playerHeight = game.player.height * game.player.size;
+            
+            ctx.fillStyle = '#000000';
+            
+            // Main body (slim rectangular torso)
+            ctx.fillRect(
+                game.player.x + (game.player.width - playerSize) / 2,
+                game.player.y + (game.player.height - playerHeight) / 2 + playerHeight * 0.28,
+                playerSize,
+                playerHeight * 0.45
+            );
+            
+            // Head (slim square/rectangular)
+            ctx.fillRect(
+                game.player.x + (game.player.width - playerSize) / 2,
+                game.player.y + (game.player.height - playerHeight) / 2,
+                playerSize,
+                playerHeight * 0.3
+            );
+            
+            // Left arm (thinner)
+            ctx.fillRect(
+                game.player.x + (game.player.width - playerSize) / 2 - 3,
+                game.player.y + (game.player.height - playerHeight) / 2 + playerHeight * 0.3,
+                3,
+                playerHeight * 0.4
+            );
+            
+            // Right arm (thinner)
+            ctx.fillRect(
+                game.player.x + (game.player.width - playerSize) / 2 + playerSize,
+                game.player.y + (game.player.height - playerHeight) / 2 + playerHeight * 0.3,
+                3,
+                playerHeight * 0.4
+            );
+            
+            // Left leg (thinner and longer)
+            ctx.fillRect(
+                game.player.x + (game.player.width - playerSize) / 2 + 2,
+                game.player.y + (game.player.height - playerHeight) / 2 + playerHeight * 0.73,
+                4,
+                playerHeight * 0.27
+            );
+            
+            // Right leg (thinner and longer)
+            ctx.fillRect(
+                game.player.x + (game.player.width - playerSize) / 2 + playerSize - 6,
+                game.player.y + (game.player.height - playerHeight) / 2 + playerHeight * 0.73,
+                4,
+                playerHeight * 0.27
+            );
+            
+            // Small white eyes for visibility
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(game.player.x + 4, game.player.y + 6, 2, 2);
+            ctx.fillRect(game.player.x + 10, game.player.y + 6, 2, 2);
+
+            // Draw goal (exit door/portal)
+            ctx.fillStyle = '#FFD700';
+            ctx.fillRect(game.goal.x, game.goal.y, game.goal.width, game.goal.height);
+            ctx.fillStyle = '#FFA500';
+            ctx.fillRect(game.goal.x + 5, game.goal.y + 5, game.goal.width - 10, game.goal.height - 10);
+            ctx.fillStyle = '#000';
+            ctx.font = '20px Arial';
+            ctx.fillText('🚪', game.goal.x + 5, game.goal.y + 30);
+
+            // Troll indicators
+            if (game.controlsReversed) {
+                ctx.fillStyle = 'rgba(255,0,0,0.3)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#fff';
+                ctx.font = '24px Arial';
+                ctx.fillText('CONTROLS REVERSED!', canvas.width/2 - 100, 50);
+            }
+
+            if (game.gravityFlipped) {
+                ctx.fillStyle = '#fff';
+                ctx.font = '24px Arial';
+                ctx.fillText('GRAVITY FLIPPED!', canvas.width/2 - 80, canvas.height - 30);
+            }
+        
+
+        function nextLevel() {
+            // Mark current level as completed
+            game.completedLevels.add(game.level);
+            
+            game.level++;
+            if (game.level > 100) {
+                alert('🎉 CONGRATULATIONS! 🎉\n\nYou have conquered all 100 levels of Oops! All Spikes!\n\nYou are truly a master of patience and persistence!\n\nFinal Stats:\n• Deaths: ' + game.deaths + '\n• Time: ' + Math.floor(game.time) + ' seconds\n\nThank you for playing! 🎮');
+                // Reset to level 1 for replay
+                game.level = 1;
+                game.deaths = 0;
+                game.time = 0;
+                game.rage = 0;
+                game.completedLevels.clear();
+            }
+            
+            // Show level complete message and map
+            setTimeout(() => {
+                alert('🎯 Level ' + (game.level - 1) + ' Complete!\n\nPress M to view the level map and see your progress!\n\nLevels completed: ' + game.completedLevels.size + '/100');
+            }, 100);
+            
+            initLevel();
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('level').textContent = game.level;
+            document.getElementById('time').textContent = Math.floor(game.time);
+            document.getElementById('deaths').textContent = game.deaths;
+            document.getElementById('rageFill').style.width = game.rage + '%';
+        }
+
+        // Troll functions for buttons
+        function skipLevel() {
+            // Fake skip - actually restarts level
+            alert('Loading next level... 😈');
+            setTimeout(() => {
+                die();
+                alert('Oops! Looks like that button was broken! 🤪');
+            }, 1000);
+        }
+
+        function getHint() {
+            const trollHints = [
+                "Hint: Try not dying! 💡",
+                "Hint: The floor is lava... wait, no, that's the spikes! 🔥",
+                "Hint: Have you tried turning it off and on again? 🔌",
+                "Hint: Jump when you see spikes! (This hint may be incorrect) 🤸",
+                "Hint: The cake is a lie, but the spikes are real! 🎂"
+            ];
+            
+            const hint = trollHints[Math.floor(Math.random() * trollHints.length)];
+            alert(hint);
+            
+            // Sometimes the hint button triggers a troll
+            if (Math.random() < 0.5) {
+                activateRandomTroll();
+            }
+        }
+
+        // Event listeners
+        window.addEventListener('keydown', (e) => {
+            game.keys[e.key] = true;
+            if (!game.gameStarted) {
+                game.gameStarted = true;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            game.keys[e.key] = false;
+        });
+
+        // Game loop
+        function gameLoop() {
+            update();
+            render();
+            updateUI();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialize and start
+        initLevel();
+        updateUI();
+        gameLoop();
+
+        // Welcome message
+        setTimeout(() => {
+            alert('Welcome to Oops! All Spikes! 🎮\n\n🔥 100 LEVELS OF PURE CHAOS 🔥\n\nNothing is as it seems...\nTrust nobody, not even yourself!\n\nCan you survive all 100 levels?\n\n🗺️ Press M anytime to view the Level Map!\n\nPress any key to begin your journey! 😈');
+        }, 500);
+    </script>
+</body>
+</html>
