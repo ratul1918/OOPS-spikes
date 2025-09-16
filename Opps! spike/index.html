@@ -6,15 +6,16 @@
     <title>Oops! All Spikes</title>
     <style>
         body {
-            margin: 0;
-            padding: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Arial', sans-serif;
-            overflow: hidden;
-            user-select: none;
-            width: 100vw;
-            height: 100vh;
-        }
+           margin: 0;
+           padding: 0;
+           background: #FFDDA0; /* light pumpkin color */
+           font-family: 'Arial', sans-serif;
+           overflow: hidden;
+           user-select: none;
+           width: 100vw;
+           height: 100vh;
+    }
+
 
         #gameContainer {
             position: relative;
@@ -24,7 +25,7 @@
         }
 
         #gameCanvas {
-            background: linear-gradient(to bottom, #8B3A3A 0%, #A0522D 50%, #CD853F 100%);
+            background: linear-gradient(135deg, #FFDDA0 0%, #FFB347 100%);
             display: block;
             border: none;
             position: absolute;
@@ -824,6 +825,7 @@
         }
 
         function updateUI() {
+            document.body.style.background = "red";
             document.getElementById('level').textContent = game.level;
             document.getElementById('time').textContent = Math.floor(game.time);
             document.getElementById('deaths').textContent = game.deaths;
