@@ -1,0 +1,454 @@
+/* ============================================
+   Oops! All Spikes - Main Stylesheet
+   Professional Game UI & Animations
+   ============================================ */
+
+/* ============================================
+   ROOT & GLOBAL STYLES
+   ============================================ */
+
+:root {
+    --primary-color: #FFDDA0;
+    --secondary-color: #FFB347;
+    --accent-color: #FFD700;
+    --danger-color: #8B0000;
+    --success-color: #00FF00;
+    --warning-color: #FF6600;
+    --text-light: #FFFFFF;
+    --text-dark: #000000;
+    --shadow-light: rgba(0, 0, 0, 0.3);
+    --shadow-dark: rgba(0, 0, 0, 0.8);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    font-family: 'Arial', sans-serif;
+    overflow: hidden;
+    user-select: none;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* ============================================
+   GAME CONTAINER & CANVAS
+   ============================================ */
+
+#gameContainer {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    transition: transform 0.5s ease;
+}
+
+#gameCanvas {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    display: block;
+    border: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+}
+
+/* ============================================
+   UI ELEMENTS - HUD
+   ============================================ */
+
+#ui {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 100;
+    color: var(--text-light);
+    font-weight: bold;
+    text-shadow: 2px 2px 4px var(--shadow-dark);
+    font-size: 18px;
+    letter-spacing: 1px;
+}
+
+#level {
+    color: var(--accent-color);
+    font-weight: 900;
+    font-size: 20px;
+}
+
+#time {
+    color: var(--success-color);
+    font-weight: 900;
+    font-size: 20px;
+}
+
+/* ============================================
+   RAGE BAR
+   ============================================ */
+
+#rageBar {
+    position: absolute;
+    top: 60px;
+    left: 20px;
+    width: 200px;
+    height: 20px;
+    background: #333;
+    border: 2px solid var(--text-light);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 15px var(--shadow-dark);
+}
+
+#rageFill {
+    height: 100%;
+    background: linear-gradient(90deg, #ffff00, var(--warning-color), #ff0000);
+    width: 0%;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+}
+
+#rageBar::before {
+    content: 'RAGE: ';
+    position: absolute;
+    left: -45px;
+    top: -2px;
+    color: var(--text-light);
+    font-weight: bold;
+    font-size: 12px;
+    text-shadow: 1px 1px 2px var(--shadow-dark);
+}
+
+/* ============================================
+   DEATH COUNTER
+   ============================================ */
+
+#deathCounter {
+    position: absolute;
+    top: 90px;
+    left: 20px;
+    color: #ff4444;
+    font-size: 18px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px var(--shadow-dark);
+    letter-spacing: 0.5px;
+}
+
+/* ============================================
+   BUTTONS - TROLL BUTTONS
+   ============================================ */
+
+#trollButtons {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    gap: 10px;
+    z-index: 100;
+}
+
+.trollBtn {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: var(--text-light);
+    border: 2px solid var(--text-light);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-shadow: 0 4px 15px var(--shadow-dark);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.trollBtn:hover {
+    background: linear-gradient(135deg, #45a049, #3d8b40);
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 6px 20px var(--shadow-dark);
+}
+
+.trollBtn:active {
+    transform: scale(0.98) translateY(0);
+    box-shadow: 0 2px 8px var(--shadow-dark);
+}
+
+.trollBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ============================================
+   INSTRUCTIONS
+   ============================================ */
+
+#instructions {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    color: var(--text-light);
+    font-size: 14px;
+    text-shadow: 2px 2px 4px var(--shadow-dark);
+    max-width: 400px;
+    line-height: 1.6;
+    letter-spacing: 0.5px;
+}
+
+#instructions strong {
+    color: var(--accent-color);
+    text-transform: uppercase;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+/* Screen Shake Animation */
+@keyframes shake {
+    0%, 100% {
+        transform: translateX(0) translateY(0);
+    }
+    10% {
+        transform: translateX(-5px) translateY(-5px);
+    }
+    20% {
+        transform: translateX(5px) translateY(5px);
+    }
+    30% {
+        transform: translateX(-5px) translateY(5px);
+    }
+    40% {
+        transform: translateX(5px) translateY(-5px);
+    }
+    50% {
+        transform: translateX(-3px) translateY(-3px);
+    }
+    60% {
+        transform: translateX(3px) translateY(3px);
+    }
+    70% {
+        transform: translateX(-3px) translateY(3px);
+    }
+    80% {
+        transform: translateX(3px) translateY(-3px);
+    }
+    90% {
+        transform: translateX(-1px) translateY(0);
+    }
+}
+
+.shake {
+    animation: shake 0.5s ease-in-out;
+}
+
+/* Screen Flip Animation */
+.flip {
+    transform: scaleY(-1) rotateX(180deg);
+    animation: flipAnimation 0.6s ease-in-out;
+}
+
+@keyframes flipAnimation {
+    0% {
+        transform: scaleY(1) rotateX(0deg);
+    }
+    50% {
+        transform: scaleY(0.8) rotateX(90deg);
+    }
+    100% {
+        transform: scaleY(-1) rotateX(180deg);
+    }
+}
+
+/* Pulse Animation for Danger */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.pulse {
+    animation: pulse 0.6s ease-in-out infinite;
+}
+
+/* Glow Animation */
+@keyframes glow {
+    0%, 100% {
+        text-shadow: 2px 2px 4px var(--shadow-dark), 0 0 10px rgba(255, 215, 0, 0.5);
+    }
+    50% {
+        text-shadow: 2px 2px 4px var(--shadow-dark), 0 0 20px rgba(255, 215, 0, 0.8);
+    }
+}
+
+.glow {
+    animation: glow 0.8s ease-in-out infinite;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+@media (max-width: 1024px) {
+    #ui {
+        font-size: 16px;
+    }
+
+    .trollBtn {
+        padding: 10px 16px;
+        font-size: 12px;
+    }
+
+    #instructions {
+        font-size: 12px;
+    }
+
+    #rageBar {
+        width: 150px;
+    }
+}
+
+@media (max-width: 768px) {
+    #ui {
+        font-size: 14px;
+        top: 10px;
+        left: 10px;
+    }
+
+    #rageBar {
+        top: 50px;
+        left: 10px;
+        width: 120px;
+        height: 15px;
+    }
+
+    #deathCounter {
+        top: 75px;
+        left: 10px;
+        font-size: 14px;
+    }
+
+    .trollBtn {
+        padding: 8px 12px;
+        font-size: 10px;
+        bottom: 10px;
+        right: 10px;
+    }
+
+    #instructions {
+        bottom: 10px;
+        left: 10px;
+        font-size: 11px;
+    }
+}
+
+@media (max-width: 480px) {
+    #ui {
+        font-size: 12px;
+        top: 5px;
+        left: 5px;
+    }
+
+    #rageBar {
+        display: none;
+    }
+
+    #deathCounter {
+        top: 50px;
+        font-size: 12px;
+    }
+
+    .trollBtn {
+        padding: 6px 10px;
+        font-size: 9px;
+        gap: 5px;
+    }
+
+    #instructions {
+        display: none;
+    }
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .shake,
+    .flip {
+        animation: none;
+    }
+}
+
+/* ============================================
+   DARK MODE SUPPORT (Optional)
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+    body {
+        background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+    }
+
+    #gameCanvas {
+        background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+    }
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+.hidden {
+    display: none !important;
+}
+
+.visible {
+    display: block !important;
+}
+
+.transparent {
+    opacity: 0;
+}
+
+.opaque {
+    opacity: 1;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-shadow {
+    text-shadow: 2px 2px 4px var(--shadow-dark);
+}
+
+.box-shadow {
+    box-shadow: 0 4px 15px var(--shadow-dark);
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+
+@media print {
+    #gameContainer,
+    #trollButtons {
+        display: none;
+    }
+}
