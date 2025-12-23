@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Oops! All Spikes - A chaotic 2D platformer with 100 levels of pure madness.">
+    <meta name="theme-color" content="#FFB347">
+    <title>Oops! All Spikes - 100 Levels of Chaos</title>
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Main Game Container -->
+    <div id="gameContainer">
+        <!-- Canvas Element -->
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- HUD / UI Layer -->
+        <div id="ui">
+            Level: <span id="level">1</span> | Time: <span id="time">0</span>s
+        </div>
+        
+        <!-- Rage Bar -->
+        <div id="rageBar">
+            <div id="rageFill"></div>
+        </div>
+        
+        <!-- Death Counter -->
+        <div id="deathCounter">
+            Deaths: <span id="deaths">0</span> 💀
+        </div>
+        
+        <!-- Troll Buttons -->
+        <div id="trollButtons">
+            <button class="trollBtn" onclick="skipLevel()">Skip Level 🎯</button>
+            <button class="trollBtn" onclick="getHint()">Get Hint 💡</button>
+        </div>
+        
+        <!-- Instructions -->
+        <div id="instructions">
+            <strong>Controls:</strong> Arrow Keys: Move | Space: Jump | M: Level Map<br>
+            <strong>Remember:</strong> Trust nothing. Everything lies. Good luck! 😈
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <!-- Load modules in dependency order -->
+    <script src="src/constants.js"></script>
+    <script src="src/level-generator.js"></script>
+    <script src="src/physics.js"></script>
+    <script src="src/rendering.js"></script>
+    <script src="src/game.js"></script>
+</body>
+</html>
